@@ -12,7 +12,7 @@ use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::keytrans::Error;
-use libsignal_net::registration::{RegistrationLock, VerificationCodeNotDeliverable};
+use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -58,6 +58,7 @@ pub enum SignalErrorCode {
     InvalidRegistrationId = 81,
     InvalidSession = 82,
     InvalidSenderKeySession = 83,
+    InvalidProtocolAddress = 84,
 
     DuplicatedMessage = 90,
 
@@ -144,6 +145,9 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
         Err(WrongErrorKind)
     }
     fn provide_uuid(&self) -> Result<uuid::Uuid, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_invalid_address(&self) -> Result<(&str, u32), WrongErrorKind> {
         Err(WrongErrorKind)
     }
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
@@ -266,6 +270,7 @@ impl FfiError for SignalProtocolError {
             Self::InvalidSessionStructure(_) => SignalErrorCode::InvalidSession,
             Self::InvalidSenderKeySession { .. } => SignalErrorCode::InvalidSenderKeySession,
             Self::InvalidRegistrationId(_, _) => SignalErrorCode::InvalidRegistrationId,
+            Self::InvalidProtocolAddress { .. } => SignalErrorCode::InvalidProtocolAddress,
             Self::DuplicatedMessage(_, _) => SignalErrorCode::DuplicatedMessage,
             Self::FfiBindingError(_) => SignalErrorCode::InternalError,
             Self::ApplicationCallbackError(_, _) => SignalErrorCode::CallbackError,
@@ -283,6 +288,12 @@ impl FfiError for SignalProtocolError {
     fn provide_uuid(&self) -> Result<uuid::Uuid, WrongErrorKind> {
         match self {
             Self::InvalidSenderKeySession { distribution_id } => Ok(*distribution_id),
+            _ => Err(WrongErrorKind),
+        }
+    }
+    fn provide_invalid_address(&self) -> Result<(&str, u32), WrongErrorKind> {
+        match self {
+            Self::InvalidProtocolAddress { name, device_id } => Ok((name, *device_id)),
             _ => Err(WrongErrorKind),
         }
     }
@@ -617,10 +628,10 @@ impl FfiError for libsignal_net::keytrans::Error {
 
 mod registration {
     use libsignal_net::infra::errors::LogSafeDisplay;
-    use libsignal_net::registration::{
-        CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
-        RequestError, RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
-        UpdateSessionError, VerificationCodeNotDeliverable,
+    use libsignal_net_chat::api::registration::{
+        CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RequestError,
+        RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
+        UpdateSessionError,
     };
 
     use super::*;

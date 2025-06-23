@@ -22,7 +22,7 @@ on:
         required: true
         # This is redundant with specifying it at the use site, but makes it appear in the website UI.
         # See https://github.com/actions/runner-images/blob/main/README.md#available-images
-        default: 'macos-latest'
+        default: 'macos-15'
 
 jobs:
   java-docker:
@@ -166,7 +166,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.arch }}-21-linux
+          key: avd-${{ matrix.arch }}-${{ env.ANDROID_API_LEVEL }}-linux
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -177,7 +177,7 @@ jobs:
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           force-avd-creation: false
           disk-size: 1024M
-          emulator-options: -no-window -noaudio -no-boot-anim
+          emulator-options: -no-window -noaudio -no-boot-anim -no-metrics
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run tests
@@ -188,7 +188,7 @@ jobs:
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           disk-size: 1024M
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim
+          emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -no-metrics
           script: ./gradlew android:connectedCheck android:packaging-test:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
           working-directory: java
 
@@ -308,7 +308,7 @@ jobs:
 
   swift-cocoapod:
     name: Swift CocoaPod (all architectures)
-    runs-on: ${{ inputs.ios_runner || 'macos-latest' }}
+    runs-on: ${{ inputs.ios_runner || 'macos-15' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
 
@@ -340,7 +340,7 @@ jobs:
       # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios
-  
+
       # Make sure we can build for device, just for completeness.
       - name: Set up testing workspace
         run: pod install
@@ -383,7 +383,8 @@ jobs:
         ./bin/run_with_network_isolation.sh "${TEST_CMD}"
 
     - name: Test run benches
-      run: cargo +stable test --workspace --benches --all-features --no-fail-fast --verbose
+      # Run with a match-all regex to select all the benchmarks, which (confusingly) causes other tests to be skipped.
+      run: cargo +stable test --workspace --benches --all-features --no-fail-fast --verbose '.*'
 
     - name: Build bins and examples
       run: cargo +stable build --workspace  --bins --examples --all-features --verbose --keep-going

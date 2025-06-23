@@ -54,12 +54,12 @@ pub struct DebugInfo {
 }
 
 #[derive(Clone, Debug)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "test-util"), derive(PartialEq))]
 pub struct Request {
     pub method: ::http::Method,
-    pub body: Option<Bytes>,
-    pub headers: HeaderMap,
     pub path: PathAndQuery,
+    pub headers: HeaderMap,
+    pub body: Option<Bytes>,
 }
 
 #[derive(Clone, Debug)]
@@ -67,8 +67,8 @@ pub struct Request {
 pub struct Response {
     pub status: StatusCode,
     pub message: Option<String>,
-    pub body: Option<Bytes>,
     pub headers: HeaderMap,
+    pub body: Option<Bytes>,
 }
 
 #[derive(Debug)]
@@ -345,6 +345,7 @@ pub mod test_support {
     use std::time::Duration;
 
     use libsignal_net_infra::dns::DnsResolver;
+    use libsignal_net_infra::route::ConnectionProxyConfig;
     use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::EnableDomainFronting;
 
@@ -359,6 +360,7 @@ pub mod test_support {
     pub async fn simple_chat_connection(
         env: &Env<'static>,
         enable_domain_fronting: EnableDomainFronting,
+        proxy: Option<ConnectionProxyConfig>,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
         let dns_resolver = DnsResolver::new_with_static_fallback(
@@ -370,7 +372,7 @@ pub mod test_support {
             env.chat_domain_config
                 .connect
                 .route_provider(enable_domain_fronting),
-            None,
+            proxy,
         )
         .filter_routes(filter_routes);
 

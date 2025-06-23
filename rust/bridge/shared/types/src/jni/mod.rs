@@ -209,7 +209,6 @@ impl JniError for SignalProtocolError {
                 )
                 .map(Into::into);
             }
-
             SignalProtocolError::InvalidSenderKeySession { distribution_id } => {
                 let distribution_id = distribution_id.convert_into(env)?;
                 let message = to_java_string(env, self.to_string())?;
@@ -245,7 +244,11 @@ impl JniError for SignalProtocolError {
 
             SignalProtocolError::InvalidState(_, _) => ClassName("java.lang.IllegalStateException"),
 
-            SignalProtocolError::InvalidArgument(_) => {
+            SignalProtocolError::InvalidProtocolAddress {
+                name: _,
+                device_id: _,
+            }
+            | SignalProtocolError::InvalidArgument(_) => {
                 ClassName("java.lang.IllegalArgumentException")
             }
             SignalProtocolError::FfiBindingError(_) => ClassName("java.lang.RuntimeException"),
@@ -530,7 +533,7 @@ impl MessageOnlyExceptionJniError for signal_media::sanitize::webp::ParseErrorRe
 mod registration {
     use libsignal_core::try_scoped;
     use libsignal_net::auth::Auth;
-    use libsignal_net::registration::{
+    use libsignal_net_chat::api::registration::{
         CheckSvr2CredentialsError, CreateSessionError, InvalidSessionId, RegisterAccountError,
         RegistrationLock, RequestError, RequestVerificationCodeError, ResumeSessionError,
         SubmitVerificationError, UpdateSessionError, VerificationCodeNotDeliverable,

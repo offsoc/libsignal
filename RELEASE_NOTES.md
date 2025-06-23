@@ -1,3 +1,4 @@
-v0.74.1
+v0.75.1
 
--   backups: Add integrityCheck to LocatorInfo
+- backups: Update validation to reject EncryptedDigest with no transit info
+- backups: Validate new backupTier field

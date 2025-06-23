@@ -170,7 +170,8 @@ jobs:
       run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
 
     - name: Test run benches
-      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose --no-fail-fast
+      # Run with a match-all regex to select all the benchmarks, which (confusingly) causes other tests to be skipped.
+      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose --no-fail-fast '.*'
 
     - name: Build bins and examples
       run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose --keep-going
@@ -296,7 +297,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-15]
 
     needs: changes
 
@@ -324,7 +325,7 @@ jobs:
       if: matrix.os == 'windows-latest'
 
     - run: brew install protobuf
-      if: matrix.os == 'macos-latest'
+      if: startsWith(matrix.os, 'macos-')
 
     - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
       with:
@@ -398,7 +399,7 @@ jobs:
   swift_cocoapod:
     name: Swift CocoaPod
 
-    runs-on: macos-latest
+    runs-on: macos-15
 
     needs: changes
 
